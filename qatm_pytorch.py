@@ -349,20 +349,21 @@ def run_multi_sample(model, dataset):
             scores = score
         else:
             scores = np.concatenate([scores, score], axis=0)
+
         w_array.append(data['template_w'])
         h_array.append(data['template_h'])
         thresh_list.append(data['thresh'])
     return np.array(scores), np.array(w_array), np.array(h_array), thresh_list
 
 
-model = CreateModel(model=models.vgg19(pretrained=True).features, alpha=25, use_cuda=True)
-
-scores, w_array, h_array, thresh_list = run_multi_sample(model, dataset)
-
-boxes, indices = nms_multi(scores, w_array, h_array, thresh_list)
-
-d_img = plot_result_multi(dataset.image_raw, boxes, indices, show=True, save_name='result_sample.png')
-
-plt.imshow(scores[2])
+# model = CreateModel(model=models.vgg19(pretrained=True).features, alpha=25, use_cuda=True)
+#
+# scores, w_array, h_array, thresh_list = run_multi_sample(model, dataset)
+#
+# boxes, indices = nms_multi(scores, w_array, h_array, thresh_list)
+#
+# d_img = plot_result_multi(dataset.image_raw, boxes, indices, show=True, save_name='result_sample.png')
+#
+# plt.imshow(scores[2])
 
 

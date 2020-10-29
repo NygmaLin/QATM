@@ -5,6 +5,8 @@ from sklearn.metrics import auc
 import numpy as np
 import cv2
 import os, sys
+import numpy as np
+from skimage.measure import compare_ssim
 
 
 int_ = lambda x: int(round(x))
@@ -122,27 +124,47 @@ def get_mask(patch, res_map):
 
 
 def compare_show(box, template_path, image_path, resize_scale, save_path):
-    import numpy as np
-    from skimage.measure import compare_ssim
 
     template_name = template_path.split('\\')[-1]
-    match = cv2.imread(image_path)[int(box[0][1] * 1 / resize_scale):int(box[1][1] * 1 / resize_scale),
-            int(box[0][0] * 1 / resize_scale):int(box[1][0] * 1 / resize_scale), :]
+    image = cv2.imread(image_path)
+    # match = image[int(box[0][1] * 1 / resize_scale):int(box[1][1] * 1 / resize_scale),
+    #         int(box[0][0] * 1 / resize_scale):int(box[1][0] * 1 / resize_scale), :]
     # match = cv2.resize(cv2.imread(image_path), size_image_raw)[box[0][1]:box[1][1], box[0][0]:box[1][0], :]
     template = cv2.imread(template_path)
     template = erase_black(template)
 
-    if match.shape != template.shape:
-        h, w = template.shape
-        match = cv2.resize(match, (w, h))
-    s, res_map = compare_ssim(template, match,  win_size=3, full=True, gaussian_weights=False)
-    res_path = r'E:\AIschool\QATM_pytorch_bak\save_path\part2\res'
+    # if match.shape != template.shape:
+    #     h, w = template.shape
+    #     match = cv2.resize(match, (w, h))
+    search_region = image[max(0, int(box[0][1] * 1 / resize_scale) - 200):int(box[1][1] * 1 / resize_scale) + 200,
+                    max(0, int(box[0][0] * 1 / resize_scale) - 200):int(box[1][0] * 1 / resize_scale) + 200, :]
+    # import pdb
+    # pdb.set_trace()
+    match, min_val, res_map, template, s = temp_match(search_region, template)
+    # s, res_map = compare_ssim(template, match,  win_size=3, full=True, gaussian_weights=False)
+    res_path = r'E:\AIschool\QATM_pytorch_bak\save_path\part3\res'
     cv2.imwrite(os.path.join(res_path, template_name), res_map)
 
     mask = get_mask(match, res_map)
     merge = np.concatenate([match, template], axis=1)
-    mask_path = r'E:\AIschool\QATM_pytorch_bak\save_path\part2\mask'
+    mask_path = r'E:\AIschool\QATM_pytorch_bak\save_path\part3\mask'
 
     cv2.imwrite(os.path.join(save_path, template_name), merge)
     cv2.imwrite(os.path.join(mask_path, template_name), mask)
+
+
+def temp_match(img, template):
+    img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+    template = cv2.cvtColor(template, cv2.COLOR_RGB2GRAY)
+
+    h, w = template.shape[:2]
+
+    res = cv2.matchTemplate(img_gray, template, cv2.TM_SQDIFF)
+
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+
+    patch = img_gray[min_loc[1]:min_loc[1] + h, min_loc[0]:min_loc[0] + w]
+    (s, res_map) = compare_ssim(template, patch, win_size=3, full=True, gaussian_weights=False)
+    return patch, min_val, res_map * 255, template, s
 
